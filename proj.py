@@ -15,39 +15,39 @@ def get_site_code(site_line):
         return site_line.rsplit('_', 1)[-1]
     return None
 
-# Function to count duplicates for each site code in the file
-def count_duplicates(conf_file_path, new_sites):
-    site_code_count = {}
+# Function to remove duplicates and return removed lines
+def remove_duplicates_and_count(conf_file_path, new_sites):
     try:
         with open(conf_file_path, 'r') as conf_file:
             lines = conf_file.readlines()
 
-        # Count occurrences of each site code in the file
-        for line in lines:
-            line = line.strip()
-            site_code = get_site_code(line)
-            if site_code:
-                site_code_count[site_code] = site_code_count.get(site_code, 0) + 1
+        site_code_set = set(get_site_code(site) for site in new_sites if get_site_code(site))
+        updated_lines = []
+        duplicates_removed = []
 
-        # Count duplicates for each entered site code
-        duplicates_info = []
-        for new_site in new_sites:
-            site_code = get_site_code(new_site)
-            if site_code:
-                count = site_code_count.get(site_code, 0)
-                duplicates_info.append(f"{new_site} -> Site Code: {site_code} -> Duplicates: {count}")
-        
-        return duplicates_info
+        for line in lines:
+            stripped_line = line.strip()
+            site_code = get_site_code(stripped_line)
+            if site_code and site_code in site_code_set:
+                duplicates_removed.append(stripped_line)
+            else:
+                updated_lines.append(line)
+
+        with open(conf_file_path, 'w') as conf_file:
+            conf_file.writelines(updated_lines)
+
+        return duplicates_removed, len(duplicates_removed), len(updated_lines)
     except FileNotFoundError:
         messagebox.showerror("Error", "The selected file does not exist.")
     except Exception as e:
         messagebox.showerror("Error", f"An error occurred: {e}")
+        return [], 0, 0
 
-# Function to insert text and display duplicates count
+# Function to insert text, count duplicates, and remove them
 def insert_text_to_conf():
     conf_file_path = file_path_var.get().strip()
     site_entries = entry_text.get("1.0", "end").strip().splitlines()
-    
+
     if not conf_file_path:
         messagebox.showerror("Error", "No file selected.")
         return
@@ -55,12 +55,14 @@ def insert_text_to_conf():
         messagebox.showerror("Error", "No text to insert.")
         return
 
-    duplicates_info = count_duplicates(conf_file_path, site_entries)
-    
-    # Display site code and duplicates information
+    duplicates_removed, lines_deleted, total_lines_after = remove_duplicates_and_count(conf_file_path, site_entries)
+
+    # Display site codes, removed duplicates, and counts
     result_display.delete("1.0", "end")
-    result_display.insert("1.0", "\n".join(duplicates_info))
-    
+    result_display.insert("1.0", f"Removed Duplicates (Count: {lines_deleted}):\n")
+    result_display.insert("end", "\n".join(duplicates_removed) + "\n\n")
+    result_display.insert("end", f"Total Lines After Insertion: {total_lines_after}\n")
+
     try:
         # Append new entries to the file
         with open(conf_file_path, 'a') as conf_file:
@@ -85,10 +87,10 @@ tk.Label(root, text="Text to Insert (one entry per line):").pack(pady=5)
 entry_text = tk.Text(root, height=10, width=50)
 entry_text.pack(pady=5)
 
-tk.Button(root, text="Insert Text and Count Duplicates", command=insert_text_to_conf).pack(pady=10)
+tk.Button(root, text="Insert Text and Remove Duplicates", command=insert_text_to_conf).pack(pady=10)
 
-tk.Label(root, text="Site Codes and Duplicates Count:").pack(pady=5)
-result_display = tk.Text(root, height=10, width=50)
+tk.Label(root, text="Result Information:").pack(pady=5)
+result_display = tk.Text(root, height=15, width=50)
 result_display.pack(pady=5)
 
 # Start the GUI loop
