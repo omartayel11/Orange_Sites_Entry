@@ -47,12 +47,17 @@ def remove_duplicates_and_count(conf_file_path, new_sites):
 def insert_text_to_conf():
     conf_file_path = file_path_var.get().strip()
     site_entries = entry_text.get("1.0", "end").strip().splitlines()   
-    try:
-        for entry in site_entries:
-            validate_entry(entry)  # Validate each entry
-    except ValueError as e:
-        messagebox.showerror("Validation Error", str(e))
-        return
+    valid_entries = []
+    invalid_entries = []
+
+    # Validate entries
+    for entry in site_entries:
+        try:
+            validate_entry(entry)  # Validate the entry
+            valid_entries.append(entry)  # Add valid entries to the list
+        except ValueError as e:
+            invalid_entries.append(f"{entry}: {str(e)}")  # Track invalid entries with the error message
+
     if not conf_file_path:
         messagebox.showerror("Error", "No file selected.")
         return
@@ -67,13 +72,19 @@ def insert_text_to_conf():
     result_display.insert("1.0", f"Removed Duplicates (Count: {lines_deleted}):\n")
     result_display.insert("end", "\n".join(duplicates_removed) + "\n\n")
     result_display.insert("end", f"Total Lines After Insertion: {total_lines_after}\n")
+    
+    if invalid_entries:
+        # Display validation errors
+        result_display.insert("end", "\n Validation Errors (Count:"+ f"{len(invalid_entries)}):\n")
+        result_display.insert("end", "\n".join(invalid_entries) + "\n")
 
+    # Insert valid entries
     try:
         # Append new entries to the file
         with open(conf_file_path, 'a') as conf_file:
-            for site_entry in site_entries:
+            for site_entry in valid_entries:
                 conf_file.write(site_entry + "\n")
-        messagebox.showinfo("Success", "All sites inserted successfully.")
+        messagebox.showinfo("Success",  f"{len(valid_entries)} entries successfully inserted.")
     except Exception as e:
         messagebox.showerror("Error", f"Failed to insert data: {e}")
 
