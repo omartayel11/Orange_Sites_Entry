@@ -46,8 +46,13 @@ def remove_duplicates_and_count(conf_file_path, new_sites):
 # Function to insert text, count duplicates, and remove them
 def insert_text_to_conf():
     conf_file_path = file_path_var.get().strip()
-    site_entries = entry_text.get("1.0", "end").strip().splitlines()
-
+    site_entries = entry_text.get("1.0", "end").strip().splitlines()   
+    try:
+        for entry in site_entries:
+            validate_entry(entry)  # Validate each entry
+    except ValueError as e:
+        messagebox.showerror("Validation Error", str(e))
+        return
     if not conf_file_path:
         messagebox.showerror("Error", "No file selected.")
         return
@@ -71,6 +76,51 @@ def insert_text_to_conf():
         messagebox.showinfo("Success", "All sites inserted successfully.")
     except Exception as e:
         messagebox.showerror("Error", f"Failed to insert data: {e}")
+
+# Validation
+def validate_entry(entry):
+    check_format(entry)
+    res = get_code_and_file(entry)
+    print(res)
+    return res[0] # returns pre comma part if valid, otherwise an error would've been thrown
+
+def get_code_and_file(entry): # checks for existance of site code and returns pre comma if valid site code
+    # Split the entry
+    parts = entry.split("_")
+    if(len(parts)<1):
+        raise ValueError("Incorrect format: site name is not following any of the correct naming conventions")
+    code = parts[len(parts)-1]
+    if not code[0].isdigit():
+        raise ValueError("Invalid site code: The code must start with a number.")
+    site = ""
+    file = ""
+    last_two_chars = code[-2:].upper()
+    if last_two_chars == "AL":
+        site = "Alex"
+        file = "RAN2"
+    elif last_two_chars == "DE":
+        site = "SYS_DELTA_NORTH"
+        file = "RAN2"
+    elif last_two_chars == "UP" or last_two_chars == "SI":
+        site = "HUA_MBV_NLG"
+        file = "RAN1"
+    else:
+         raise ValueError("Incorrect Site Code Or Site Code Does Not Exist: The site code must end with one of the following: AL, DE, SI, or UP.")
+    
+    return [site, file]
+
+# print(getCodeAndFile("m_npAO"))
+
+def check_format(entry): # checks format: no spaces and number of fields of the entry is not less than 4
+    parts = entry.split("_")
+    if len(parts) < 4:
+        raise ValueError("Incorrect format: Missing one or more fields (must have at least 4 parts).")
+    # elif len(parts) > 5:
+    #     raise ValueError("Incorrect format: Extra fields entered (must not exceed 5 parts).")
+    for part in parts:
+        if " " in part:
+            raise ValueError("Incorrect format: Fields must not contain spaces.")
+# Validation End
 
 # Create the main window
 root = tk.Tk()
