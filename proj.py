@@ -1,5 +1,53 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
+import csv
+from openpyxl import load_workbook
+
+
+csv_entries = []
+OLD_LENGTH = 0
+
+def upload_csv_file():
+    global csv_entries
+    csv_file_path = filedialog.askopenfilename(
+        title="Select CSV or Excel File",
+        filetypes=[("CSV or Excel files", "*.csv;*.xlsx")]
+    )
+    if not csv_file_path:
+        messagebox.showinfo("File Selection", "No file selected.")
+        return
+
+    try:
+        if csv_file_path.endswith(".csv"):
+            # Read the CSV file
+            with open(csv_file_path, 'r') as csv_file:
+                reader = csv.reader(csv_file)
+                next(reader, None)  # Skip the header row, if any
+                csv_entries = [row[0].strip() for row in reader if row and row[0].strip()]
+
+        elif csv_file_path.endswith(".xlsx"):
+            # Read the Excel file using openpyxl
+            workbook = load_workbook(filename=csv_file_path)
+            sheet = workbook.active  # Get the active sheet
+
+            # Extract entries from the first column, skipping the header row
+            csv_entries = [
+                str(row[0]).strip()
+                for row in sheet.iter_rows(min_row=2, max_col=1, values_only=True)
+                if row[0]  # Skip empty rows
+            ]
+
+        else:
+            messagebox.showerror("Error", "Unsupported file type. Please upload a .csv or .xlsx file.")
+            return
+
+        # Populate the Text widget with the loaded entries
+        entry_text.delete("1.0", "end")  # Clear existing text
+        entry_text.insert("1.0", "\n".join(csv_entries))  # Insert entries
+
+        messagebox.showinfo("Success", f"{len(csv_entries)} entries loaded from the file.")
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to read file: {e}")
 
 # Function to select a .conf file
 def select_conf_file():
@@ -73,14 +121,18 @@ def insert_text_to_conf():
     result_display.insert("end", "\n".join(duplicates_removed) + "\n\n")
     result_display.insert("end", f"Total Lines After Insertion: {total_lines_after}\n")
     
+
     if invalid_entries:
-        # Display validation errors
-        result_display.insert("end", "\n Validation Errors (Count:"+ f"{len(invalid_entries)}):\n")
+    # Remove duplicates while preserving order
+        seen = set()
+        invalid_entries = [entry for entry in invalid_entries if not (entry in seen or seen.add(entry))]
+        result_display.insert("end", f"\n Validation Errors (Count: {len(invalid_entries)}):\n")
         result_display.insert("end", "\n".join(invalid_entries) + "\n")
 
-    # Insert valid entries
+    OLD_LENGTH = len(valid_entries) #3shan n2ool kano kam w ba2o kam
+    valid_entries = list(set(valid_entries))
+
     try:
-        # Append new entries to the file
         with open(conf_file_path, 'a') as conf_file:
             for site_entry in valid_entries:
                 conf_file.write(site_entry + "\n")
@@ -124,8 +176,8 @@ def get_code_and_file(entry): # checks for existance of site code and returns pr
 
 def check_format(entry): # checks format: no spaces and number of fields of the entry is not less than 4
     parts = entry.split("_")
-    if len(parts) < 4:
-        raise ValueError("Incorrect format: Missing one or more fields (must have at least 4 parts).")
+    # if len(parts) < 4:
+    #     raise ValueError("Incorrect format: Missing one or more fields (must have at least 4 parts).")
     # elif len(parts) > 5:
     #     raise ValueError("Incorrect format: Extra fields entered (must not exceed 5 parts).")
     for part in parts:
@@ -143,6 +195,7 @@ file_path_var = tk.StringVar()
 tk.Label(root, text="Selected .conf File:").pack(pady=5)
 tk.Entry(root, textvariable=file_path_var, width=50).pack(pady=5)
 tk.Button(root, text="Select .conf File", command=select_conf_file).pack(pady=5)
+tk.Button(root, text="Upload CSV File", command=upload_csv_file).pack(pady=5)
 
 tk.Label(root, text="Text to Insert (one entry per line):").pack(pady=5)
 entry_text = tk.Text(root, height=10, width=50)
