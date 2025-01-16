@@ -7,6 +7,10 @@ from openpyxl import load_workbook
 csv_entries = []
 OLD_LENGTH = 0
 
+# Define file paths for automatic selection
+RAN1_PATH = "C:/Users/Omart/Desktop/GUC/Orange Internship docs/Nokia/RAN1/MR.conf"  # Replace with actual path for RAN1
+RAN2_PATH = "C:/Users/Omart/Desktop/GUC/Orange Internship docs/Nokia/RAN2/MR.conf"  # Replace with actual path for RAN2
+
 def upload_csv_file():
     global csv_entries
     csv_file_path = filedialog.askopenfilename(
@@ -49,14 +53,6 @@ def upload_csv_file():
     except Exception as e:
         messagebox.showerror("Error", f"Failed to read file: {e}")
 
-# Function to select a .conf file
-def select_conf_file():
-    conf_file_path = filedialog.askopenfilename(title="Select .conf file", filetypes=[("Config files", "*.conf")])
-    if conf_file_path:
-        file_path_var.set(conf_file_path)
-    else:
-        messagebox.showinfo("File Selection", "No file selected.")
-
 # Function to extract the site code from a line
 def get_site_code(site_line):
     if '_' in site_line:
@@ -93,52 +89,55 @@ def remove_duplicates_and_count(conf_file_path, new_sites):
 
 # Function to insert text, count duplicates, and remove them
 def insert_text_to_conf():
-    conf_file_path = file_path_var.get().strip()
-    site_entries = entry_text.get("1.0", "end").strip().splitlines()   
+    site_entries = entry_text.get("1.0", "end").strip().splitlines()
     valid_entries = []
     invalid_entries = []
 
-    # Validate entries
     for entry in site_entries:
         try:
-            validate_entry(entry)  # Validate the entry
-            valid_entries.append(entry)  # Add valid entries to the list
+            validate_entry(entry)
+            valid_entries.append(entry)
         except ValueError as e:
-            invalid_entries.append(f"{entry}: {str(e)}")  # Track invalid entries with the error message
+            invalid_entries.append(f"{entry}: {str(e)}")
 
-    if not conf_file_path:
-        messagebox.showerror("Error", "No file selected.")
-        return
     if not site_entries or all(not line.strip() for line in site_entries):
         messagebox.showerror("Error", "No text to insert.")
         return
 
-    duplicates_removed, lines_deleted, total_lines_after = remove_duplicates_and_count(conf_file_path, site_entries)
+    valid_entries = list(set(valid_entries))
+    OLD_LENGTH = len(valid_entries)
 
-    # Display site codes, removed duplicates, and counts
+    ran1_entries = [entry for entry in valid_entries if get_code_and_file(entry)[1] == "RAN1"]
+    ran2_entries = [entry for entry in valid_entries if get_code_and_file(entry)[1] == "RAN2"]
+
+    def process_entries(conf_path, entries):
+        duplicates_removed, lines_deleted, total_lines_after = remove_duplicates_and_count(conf_path, entries)
+        with open(conf_path, 'a') as conf_file:
+            for site_entry in entries:
+                conf_file.write(get_code_and_file(site_entry)[0] + "," + site_entry.upper() + "\n")
+        return duplicates_removed, lines_deleted, total_lines_after
+
+    duplicates1, lines_deleted1, total1 = process_entries(RAN1_PATH, ran1_entries)
+    duplicates2, lines_deleted2, total2 = process_entries(RAN2_PATH, ran2_entries)
+
     result_display.delete("1.0", "end")
-    result_display.insert("1.0", f"Removed Duplicates (Count: {lines_deleted}):\n")
-    result_display.insert("end", "\n".join(duplicates_removed) + "\n\n")
-    result_display.insert("end", f"Total Lines After Insertion: {total_lines_after}\n")
-    
+    result_display.insert("1.0", f"RAN1 File:\n")
+    result_display.insert("end", f"Removed Duplicates (Count: {lines_deleted1}):\n")
+    result_display.insert("end", "\n".join(duplicates1) + "\n\n")
+    result_display.insert("end", f"Total Lines After Insertion: {total1}\n\n")
+
+    result_display.insert("end", f"RAN2 File:\n")
+    result_display.insert("end", f"Removed Duplicates (Count: {lines_deleted2}):\n")
+    result_display.insert("end", "\n".join(duplicates2) + "\n\n")
+    result_display.insert("end", f"Total Lines After Insertion: {total2}\n")
 
     if invalid_entries:
-    # Remove duplicates while preserving order
         seen = set()
         invalid_entries = [entry for entry in invalid_entries if not (entry in seen or seen.add(entry))]
-        result_display.insert("end", f"\n Validation Errors (Count: {len(invalid_entries)}):\n")
+        result_display.insert("end", f"\nValidation Errors (Count: {len(invalid_entries)}):\n")
         result_display.insert("end", "\n".join(invalid_entries) + "\n")
 
-    OLD_LENGTH = len(valid_entries) #3shan n2ool kano kam w ba2o kam
-    valid_entries = list(set(valid_entries))
-
-    try:
-        with open(conf_file_path, 'a') as conf_file:
-            for site_entry in valid_entries:
-                conf_file.write(site_entry + "\n")
-        messagebox.showinfo("Success",  f"{len(valid_entries)} entries successfully inserted.")
-    except Exception as e:
-        messagebox.showerror("Error", f"Failed to insert data: {e}")
+    messagebox.showinfo("Success", f"Entries successfully inserted: {len(valid_entries)}")
 
 # Validation
 def validate_entry(entry):
@@ -194,7 +193,6 @@ file_path_var = tk.StringVar()
 
 tk.Label(root, text="Selected .conf File:").pack(pady=5)
 tk.Entry(root, textvariable=file_path_var, width=50).pack(pady=5)
-tk.Button(root, text="Select .conf File", command=select_conf_file).pack(pady=5)
 tk.Button(root, text="Upload CSV File", command=upload_csv_file).pack(pady=5)
 
 tk.Label(root, text="Text to Insert (one entry per line):").pack(pady=5)
