@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import csv
 from openpyxl import load_workbook
+import re
 
 
 csv_entries = []
@@ -54,9 +55,16 @@ def upload_csv_file():
         messagebox.showerror("Error", f"Failed to read file: {e}")
 
 # Function to extract the site code from a line
+#def get_site_code(site_line):
+    #if '_' in site_line:
+        #return site_line.rsplit('_', 1)[-1]
+    #return None
+
 def get_site_code(site_line):
-    if '_' in site_line:
-        return site_line.rsplit('_', 1)[-1]
+    # Regular expression to find any combination of 4 digits followed by 2 letters
+    match = re.search(r'\d{4}[A-Za-z]{2}', site_line)
+    if match:
+        return match.group()  # Return the matched site code
     return None
 
 # Function to remove duplicates and return removed lines
@@ -110,6 +118,7 @@ def insert_text_to_conf():
     ran1_entries = [entry for entry in valid_entries if get_code_and_file(entry)[1] == "RAN1"]
     ran2_entries = [entry for entry in valid_entries if get_code_and_file(entry)[1] == "RAN2"]
 
+
     def process_entries(conf_path, entries):
         duplicates_removed, lines_deleted, total_lines_after = remove_duplicates_and_count(conf_path, entries)
         with open(conf_path, 'a') as conf_file:
@@ -120,8 +129,18 @@ def insert_text_to_conf():
     duplicates1, lines_deleted1, total1 = process_entries(RAN1_PATH, ran1_entries)
     duplicates2, lines_deleted2, total2 = process_entries(RAN2_PATH, ran2_entries)
 
+    result_display.config(state="normal")
     result_display.delete("1.0", "end")
-    result_display.insert("1.0", f"RAN1 File:\n")
+
+    # Display invalid entries first
+    if invalid_entries:
+        seen = set()
+        invalid_entries = [entry for entry in invalid_entries if not (entry in seen or seen.add(entry))]
+        result_display.insert("1.0", f"Validation Errors (Count: {len(invalid_entries)}):\n")
+        result_display.insert("end", "\n".join(invalid_entries) + "\n\n")
+
+    # Now display the duplicates and insertion results
+    result_display.insert("end", f"RAN1 File:\n")
     result_display.insert("end", f"Removed Duplicates (Count: {lines_deleted1}):\n")
     result_display.insert("end", "\n".join(duplicates1) + "\n\n")
     result_display.insert("end", f"Total Lines After Insertion: {total1}\n\n")
@@ -131,13 +150,9 @@ def insert_text_to_conf():
     result_display.insert("end", "\n".join(duplicates2) + "\n\n")
     result_display.insert("end", f"Total Lines After Insertion: {total2}\n")
 
-    if invalid_entries:
-        seen = set()
-        invalid_entries = [entry for entry in invalid_entries if not (entry in seen or seen.add(entry))]
-        result_display.insert("end", f"\nValidation Errors (Count: {len(invalid_entries)}):\n")
-        result_display.insert("end", "\n".join(invalid_entries) + "\n")
+    messagebox.showinfo("Success", f"Entries successfully inserted: {len(valid_entries)}\nInvalid entries: {len(invalid_entries)}")
 
-    messagebox.showinfo("Success", f"Entries successfully inserted: {len(valid_entries)}")
+    result_display.config(state="disabled")
 
 # Validation
 def validate_entry(entry):
@@ -151,7 +166,8 @@ def get_code_and_file(entry): # checks for existance of site code and returns pr
     parts = entry.split("_")
     if(len(parts)<1):
         raise ValueError("Incorrect format: site name is not following any of the correct naming conventions")
-    code = parts[len(parts)-1]
+    #code = parts[len(parts)-1]
+    code = get_site_code(entry)
     if not code[0].isdigit():
         raise ValueError("Invalid site code: The code must start with a number.")
     site = ""
@@ -183,26 +199,63 @@ def check_format(entry): # checks format: no spaces and number of fields of the 
         if " " in part:
             raise ValueError("Incorrect format: Fields must not contain spaces.")
 # Validation End
+def on_enter(e, button):
+    button.config(bg="#ff9f00")  # Change the background color on hover
+
+def on_leave(e, button):
+    button.config(bg="#ff7900")  # Revert the background color when the mouse leaves
 
 # Create the main window
 root = tk.Tk()
-root.title("Edit .conf File")
+root.title("Orange Site Entry Tool")
+root.configure(bg="#1a1a1a")  # Set background to dark color
+root.state('zoomed')  # Fullscreen mode
 
-# UI Elements
-file_path_var = tk.StringVar()
+# Centering and styles
+frame = tk.Frame(root, bg="#1a1a1a")
+frame.pack(expand=True)
 
-tk.Label(root, text="Selected .conf File:").pack(pady=5)
-tk.Entry(root, textvariable=file_path_var, width=50).pack(pady=5)
-tk.Button(root, text="Upload CSV File", command=upload_csv_file).pack(pady=5)
+# Add a bold title with white font
+title_label = tk.Label(frame, text="Site Entry Configuration Tool", fg="white", bg="#1a1a1a", font=("Arial", 24, "bold"))
+title_label.pack(pady=20)  # Add some padding at the top
 
-tk.Label(root, text="Text to Insert (one entry per line):").pack(pady=5)
-entry_text = tk.Text(root, height=10, width=50)
+# Button and text styles
+button_style = {"bg": "#ff7900", "fg": "white", "font": ("Arial", 14, "bold"), "relief": "flat", "highlightthickness": 0}
+label_style = {"bg": "#1a1a1a", "fg": "white", "font": ("Arial", 12)}
+text_style = {
+    "bg": "#2b2b2b", "fg": "white", "insertbackground": "white", "font": ("Consolas", 11),
+    "bd": 0, "highlightthickness": 0, "relief": "flat"
+}
+
+# Logo Placeholder
+# Load the logo image (adjust the path to your logo)
+logo_image = tk.PhotoImage(file='C:/Users/Omart/Desktop/GUC/Orange Internship docs/WhatsApp Image 2025-01-17 at 10.16.39 PM.png')
+
+# Logo Placeholder
+logo_frame = tk.Frame(root, bg="#1a1a1a")
+logo_frame.place(relx=0, rely=0, anchor='nw', x=20, y=20)  # Position near top left with some padding
+logo_label = tk.Label(logo_frame, image=logo_image, bg="#1a1a1a")
+logo_label.pack()
+
+# UI Elements with hover effects
+upload_button = tk.Button(frame, text="Upload CSV File", command=upload_csv_file, **button_style)
+upload_button.pack(pady=10)
+upload_button.bind("<Enter>", lambda e: on_enter(e, upload_button))
+upload_button.bind("<Leave>", lambda e: on_leave(e, upload_button))
+
+tk.Label(frame, text="Text to Insert (one entry per line):", **label_style).pack(pady=5)
+entry_text = tk.Text(frame, height=10, width=60, **text_style)
 entry_text.pack(pady=5)
 
-tk.Button(root, text="Insert Text and Remove Duplicates", command=insert_text_to_conf).pack(pady=10)
+insert_button = tk.Button(frame, text="Insert Text and Remove Duplicates", command=insert_text_to_conf, **button_style)
+insert_button.pack(pady=(15, 60))  # Increased bottom padding
+insert_button.bind("<Enter>", lambda e: on_enter(e, insert_button))
+insert_button.bind("<Leave>", lambda e: on_leave(e, insert_button))
 
-tk.Label(root, text="Result Information:").pack(pady=5)
-result_display = tk.Text(root, height=15, width=50)
+tk.Label(frame, text="Result Information:", **label_style).pack(pady=5)
+
+result_display = tk.Text(frame, height=15, width=90, **text_style)
+result_display.config(state="disabled")
 result_display.pack(pady=5)
 
 # Start the GUI loop
