@@ -50,7 +50,7 @@ def upload_csv_file():
         entry_text.delete("1.0", "end")  # Clear existing text
         entry_text.insert("1.0", "\n".join(csv_entries))  # Insert entries
 
-        messagebox.showinfo("Success", f"{len(csv_entries)} entries loaded from the file.")
+        messagebox.showinfo(" ", f"{len(csv_entries)} entries loaded from the file.")
     except Exception as e:
         messagebox.showerror("Error", f"Failed to read file: {e}")
 
@@ -60,12 +60,29 @@ def upload_csv_file():
         #return site_line.rsplit('_', 1)[-1]
     #return None
 
+def trim_trailing_whitespace(conf_file_path):
+    try:
+        with open(conf_file_path, 'r') as file:
+            lines = file.readlines()
+
+        while lines and lines[-1].strip() == '':
+            lines.pop()
+
+        lines = [line.rstrip() + '\n' for line in lines]
+
+        with open(conf_file_path, 'w') as file:
+            file.writelines(lines)
+    except FileNotFoundError:
+        messagebox.showerror("Error", "The configuration file was not found.")
+    except Exception as e:
+        messagebox.showerror("Error", f"An error occurred while trimming: {e}")
+
 def get_site_code(site_line):
-    # Regular expression to find any combination of 4 digits followed by 2 letters
-    match = re.search(r'\d{4}[A-Za-z]{2}', site_line)
+    match = re.search(r'_(\d{4}[A-Za-z]{2})(_|$)', site_line)
     if match:
-        return match.group()  # Return the matched site code
+        return match.group(1)  # Return the matched site code without the leading underscore
     return None
+
 
 # Function to remove duplicates and return removed lines
 def remove_duplicates_and_count(conf_file_path, new_sites):
@@ -120,6 +137,7 @@ def insert_text_to_conf():
 
 
     def process_entries(conf_path, entries):
+        trim_trailing_whitespace(conf_path)
         duplicates_removed, lines_deleted, total_lines_after = remove_duplicates_and_count(conf_path, entries)
         with open(conf_path, 'a') as conf_file:
             for site_entry in entries:
@@ -150,7 +168,7 @@ def insert_text_to_conf():
     result_display.insert("end", "\n".join(duplicates2) + "\n\n")
     result_display.insert("end", f"Total Lines After Insertion: {total2}\n")
 
-    messagebox.showinfo("Success", f"Entries successfully inserted: {len(valid_entries)}\nInvalid entries: {len(invalid_entries)}")
+    messagebox.showinfo(" ", f"Entries successfully inserted: {len(valid_entries)}\nInvalid entries: {len(invalid_entries)}")
 
     result_display.config(state="disabled")
 
@@ -168,6 +186,8 @@ def get_code_and_file(entry): # checks for existance of site code and returns pr
         raise ValueError("Incorrect format: site name is not following any of the correct naming conventions")
     #code = parts[len(parts)-1]
     code = get_site_code(entry)
+    if code is None:
+        raise ValueError("Incorrect format: Site code not found in the entry, Entry may be written incorrectly.")
     if not code[0].isdigit():
         raise ValueError("Invalid site code: The code must start with a number.")
     site = ""
@@ -229,7 +249,7 @@ text_style = {
 
 # Logo Placeholder
 # Load the logo image (adjust the path to your logo)
-logo_image = tk.PhotoImage(file='C:/Users/Omart/Desktop/GUC/Orange Internship docs/WhatsApp Image 2025-01-17 at 10.16.39 PM.png')
+logo_image = tk.PhotoImage(file='WhatsApp Image 2025-01-17 at 10.16.39 PM.png')
 
 # Logo Placeholder
 logo_frame = tk.Frame(root, bg="#1a1a1a")
