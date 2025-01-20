@@ -179,33 +179,70 @@ def validate_entry(entry):
     print(res)
     return res[0] # returns pre comma part if valid, otherwise an error would've been thrown
 
-def get_code_and_file(entry): # checks for existance of site code and returns pre comma if valid site code
-    # Split the entry
-    parts = entry.split("_")
-    if(len(parts)<1):
-        raise ValueError("Incorrect format: site name is not following any of the correct naming conventions")
-    #code = parts[len(parts)-1]
+site_file_mapping = {}
+CONFIG_FILE_PATH = "C:/Users/Omart/Desktop/GUC/Orange Internship docs/siteCodes.conf"  # Replace with your actual path
+
+def load_site_file_config(config_path):
+   
+    try:
+        with open(config_path, 'r') as file:
+            for line in file:
+                parts = line.strip().split(',')
+                if len(parts) == 3:
+                    site_code, site_name, file_name = parts
+                    site_file_mapping[site_code.upper()] = (site_name, file_name)
+    except FileNotFoundError:
+        raise FileNotFoundError("Configuration file not found.")
+    except Exception as e:
+        raise ValueError(f"Error loading configuration file: {e}")
+
+load_site_file_config(CONFIG_FILE_PATH)
+
+def get_code_and_file(entry):
+
+    #Check for the existence of a site code and return site and file if valid.
     code = get_site_code(entry)
     if code is None:
-        raise ValueError("Incorrect format: Site code not found in the entry, Entry may be written incorrectly.")
+        raise ValueError("Incorrect format: Site code not found in the entry. Entry may be written incorrectly.")
     if not code[0].isdigit():
         raise ValueError("Invalid site code: The code must start with a number.")
-    site = ""
-    file = ""
+
     last_two_chars = code[-2:].upper()
-    if last_two_chars == "AL":
-        site = "Alex"
-        file = "RAN2"
-    elif last_two_chars == "DE":
-        site = "SYS_DELTA_NORTH"
-        file = "RAN2"
-    elif last_two_chars == "UP" or last_two_chars == "SI":
-        site = "HUA_MBV_NLG"
-        file = "RAN1"
+    if last_two_chars in site_file_mapping:
+        site, file = site_file_mapping[last_two_chars]
     else:
-         raise ValueError("Incorrect Site Code Or Site Code Does Not Exist: The site code must end with one of the following: AL, DE, SI, or UP.")
-    
+        raise ValueError("Incorrect Site Code or Site Code Does Not Exist: Please check the configuration file.")
+
     return [site, file]
+
+
+# def get_code_and_file(entry): # checks for existance of site code and returns pre comma if valid site code
+#     # Split the entry
+#     parts = entry.split("_")
+#     if(len(parts)<1):
+#         raise ValueError("Incorrect format: site name is not following any of the correct naming conventions")
+#     #code = parts[len(parts)-1]
+#     code = get_site_code(entry)
+#     if code is None:
+#         raise ValueError("Incorrect format: Site code not found in the entry, Entry may be written incorrectly.")
+#     if not code[0].isdigit():
+#         raise ValueError("Invalid site code: The code must start with a number.")
+#     site = ""
+#     file = ""
+#     last_two_chars = code[-2:].upper()
+#     if last_two_chars == "AL":
+#         site = "Alex"
+#         file = "RAN2"
+#     elif last_two_chars == "DE":
+#         site = "SYS_DELTA_NORTH"
+#         file = "RAN2"
+#     elif last_two_chars == "UP" or last_two_chars == "SI":
+#         site = "HUA_MBV_NLG"
+#         file = "RAN1"
+#     else:
+#          raise ValueError("Incorrect Site Code Or Site Code Does Not Exist: The site code must end with one of the following: AL, DE, SI, or UP.")
+    
+#     return [site, file]
 
 # print(getCodeAndFile("m_npAO"))
 
